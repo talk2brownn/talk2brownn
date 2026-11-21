@@ -1,0 +1,16 @@
+[project]
+name = "edge-engine"
+version = "0.1.0"
+description = "Pricing engine and value-pick ladder for football, basketball and handball"
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.26", "scipy>=1.11"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.setuptools]
+packages = ["edge"]
