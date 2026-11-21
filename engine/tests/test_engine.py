@@ -146,3 +146,18 @@ def test_mega_slip_never_pads():
     assert len(slip.legs) == 12
     assert "only 12" in slip.note
     assert slip.expected_return > 1
+
+
+# ------------------------------------------------------------------ daily pipeline
+
+def test_catalogue_complements_and_blend():
+    from edge.football_day import blend, market_catalogue, price_match
+    m = FootballMatch(1.7, 1.0)
+    cat = {name: p for name, _, p in market_catalogue(m, simulate_paths(1.7, 1.0, 5000, seed=1))}
+    assert cat["Over 2.5"] + cat["Under 2.5"] == pytest.approx(1.0)
+    assert cat["GG (both teams score)"] + cat["NG"] == pytest.approx(1.0)
+    assert cat["Home or Over 2.5"] >= max(cat["Home win"], cat["Over 2.5"])
+    priced = price_match(m, "A", n_sims=5000)
+    assert all(x.min_odds > x.fair_odds for x in priced)
+    assert blend((1.0, 1.0), (4.0, 1.0), 0.5) == pytest.approx((2.0, 1.0))
+    assert blend(None, (1.2, 0.9), 0.8) == (1.2, 0.9)
