@@ -25,6 +25,10 @@ HOSTS = {
     "basketball": "https://v1.basketball.api-sports.io",
     "handball": "https://v1.handball.api-sports.io",
     "football": "https://v3.football.api-sports.io",
+    "hockey": "https://v1.hockey.api-sports.io",
+    "rugby": "https://v1.rugby.api-sports.io",
+    "nfl": "https://v1.american-football.api-sports.io",
+    "baseball": "https://v1.baseball.api-sports.io",
 }
 _KEY_HEADER = {"x-apisports-key": os.environ.get("APISPORTS_KEY", "proxy-injected")}
 
@@ -61,3 +65,19 @@ def odds_for_game(sport: str, game_id: int, max_age_hours: float = 2.0) -> list[
 def season_games(sport: str, league: int, season: str) -> list[dict]:
     """A whole past season (free plan: 2022-2024). Cached for 30 days."""
     return get(sport, "games", 24 * 30, league=league, season=season)
+
+
+def normalize(sport: str, g: dict) -> dict:
+    """One shape for every sport: id, date, status, country, league, home, away.
+
+    The American football API nests id/date/status under "game"."""
+    if "game" in g:
+        info = g["game"]
+        d = info["date"]
+        return {"id": info["id"], "date": f"{d['date']} {d['time']}", "status": info["status"]["short"],
+                "country": (g["league"].get("country") or {}).get("name") or "",
+                "league": g["league"]["name"], "home": g["teams"]["home"]["name"],
+                "away": g["teams"]["away"]["name"]}
+    return {"id": g["id"], "date": g["date"][:16].replace("T", " "), "status": g["status"]["short"],
+            "country": (g.get("country") or {}).get("name") or "", "league": g["league"]["name"],
+            "home": g["teams"]["home"]["name"], "away": g["teams"]["away"]["name"]}

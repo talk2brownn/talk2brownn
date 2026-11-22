@@ -1,8 +1,9 @@
-"""Daily command: price today's games in all three sports, log every odds
+"""Daily command: price today's games in every sport (football, basketball,
+handball, ice hockey, NFL, rugby, baseball), log every odds
 snapshot, and (given SportyBet prices) list value picks and build the ladder
 and the 30-game slip.
 
-  python -m edge.today                          # all sports
+  python -m edge.today                          # all seven sports
   python -m edge.today --sport basketball       # one sport
   python -m edge.today --prices prices.csv      # + value picks, ladder, big slip
 
@@ -18,7 +19,7 @@ import json
 from datetime import date
 from pathlib import Path
 
-from . import basketball_day, football_day, handball_day
+from . import basketball_day, football_day, handball_day, multisport_day
 from .data import store
 from .data.footballdata import load_fixtures
 from .data.http import DATA_DIR
@@ -27,7 +28,7 @@ from .sheet import PricedGame
 from .value import Selection, check
 
 OUTPUT_DIR = DATA_DIR.parent / "output"
-SPORTS = ("football", "basketball", "handball")
+SPORTS = ("football", "basketball", "handball", "hockey", "nfl", "rugby", "baseball")
 _META = {"Div", "Date", "Time", "HomeTeam", "AwayTeam", "Referee", "AHh", "AHCh"}
 
 
@@ -50,7 +51,9 @@ def price_sport(sport: str, day: date, divisions: set[str] | None, con) -> list[
         return football_day.run(day, divisions)
     if sport == "basketball":
         return basketball_day.run(day, log)
-    return handball_day.run(day, log)
+    if sport == "handball":
+        return handball_day.run(day, log)
+    return multisport_day.run(sport, day, log)
 
 
 def selections_from_prices(games: list[PricedGame], path: Path) -> list[Selection]:

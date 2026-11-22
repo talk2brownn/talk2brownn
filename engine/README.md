@@ -1,6 +1,6 @@
 # Edge engine
 
-The pricing core of the prediction site. For football, basketball and handball it:
+The pricing core of the prediction site. For football, basketball, handball, ice hockey, NFL, rugby and baseball it:
 
 1. works out what each market is truly worth;
 2. keeps only the selections where SportyBet's price beats that by a safety buffer (the **value picks**);
@@ -19,6 +19,12 @@ No bet is safe. Margin is charged on every leg, so the engine's main job is refu
 | `edge/handball.py` | Team goals to a score grid; all handball markets come from it |
 | `edge/value.py` | Value filter: odds band and minimum edge per sport and market type, plus extra edge for lower league tiers |
 | `edge/ladder.py` | Ladder optimiser (highest win chance that reaches each target, max one leg per match) and the 30-game slip |
+| `edge/hockey.py` | Ice hockey (Poisson goal grid, regulation and incl. OT) and baseball (negative-binomial runs grid) |
+| `edge/points.py` | NFL and rugby points model; NFL margins weighted towards key numbers 3 and 7 |
+| `edge/sheet.py` | Shared price-sheet format, minimum SportyBet odds, reading expected scores off bookmaker lines |
+| `edge/data/` | Free feeds: football-data.co.uk, API-Sports (7 sports, free plan), cached downloads, SQLite odds logger |
+| `edge/*_day.py` | Daily runs per sport: today's games, sharpest lines, every market priced |
+| `edge/today.py` | One command for all sports: price sheet, odds logging, value picks, ladder and 30-game slip |
 | `edge/demo.py` | Re-prices Man City vs Fulham from SportyBet screenshots |
 
 ## Value rules
@@ -30,6 +36,10 @@ No bet is safe. Margin is charged on every leg, so the engine's main job is refu
 | Football | Stat markets (corners, cards, fouls, shots) | 1.60–2.20 | 6% |
 | Basketball | Team totals, halves, quarters, margin | 1.35–2.10 | 4% |
 | Handball | All | 1.60–2.20 | 7% |
+| Ice hockey | All | 1.35–2.20 | 5% |
+| NFL | All | 1.40–2.10 | 5% |
+| Rugby | All | 1.40–2.20 | 6% |
+| Baseball | All | 1.40–2.20 | 5% |
 
 - **League tier:** tier B leagues need 1 point more edge, tier C 2 points more.
 - **Odds floor:** no leg below 1.10.
@@ -42,4 +52,5 @@ cd engine
 pip install numpy scipy pytest
 python -m pytest        # tests
 python -m edge.demo     # Man City vs Fulham example
+python -m edge.today    # today's price sheet for every sport (needs network)
 ```

@@ -185,3 +185,48 @@ def test_basketball_and_handball_catalogues():
     assert all(0 < p < 1 for p in bb.values())
     hb = {n: p for n, _, p in hb_cat(30, 27)}
     assert hb["Home win"] + hb["Draw"] + hb["Away win"] == pytest.approx(1.0)
+
+
+# ------------------------------------------------------------------ added sports
+
+def _v(pairs):
+    return [{"value": k, "odd": str(v)} for k, v in pairs]
+
+
+def test_hockey_entries_match_market():
+    from edge.multisport_day import hockey_entries
+    bets = {"3Way Result": _v([("Home", 2.9), ("Draw", 4.0), ("Away", 1.95)]),
+            "Over/Under": _v([("Over 5.5", 1.9), ("Under 5.5", 1.9)])}
+    entries, inputs = hockey_entries(bets)
+    e = {n: p for n, _, p in entries}
+    assert e["Home win (regulation)"] + e["Draw (regulation)"] + e["Away win (regulation)"] == pytest.approx(1.0)
+    assert e["Home win incl. OT"] + e["Away win incl. OT"] == pytest.approx(1.0)
+    assert inputs["away_goals"] > inputs["home_goals"]
+    assert e["Over 5.5"] == pytest.approx(0.5, abs=0.03)
+
+
+def test_nfl_key_numbers_and_rugby_draws():
+    from edge.points import PointsMatch
+    nfl = PointsMatch("nfl", 24, 21)
+    pmf = dict(zip(nfl.margins.tolist(), nfl.margin_pmf.tolist()))
+    assert pmf[3] > pmf[2] and pmf[3] > pmf[5] and pmf[7] > pmf[8]   # key numbers
+    assert nfl.win_two_way("home") + nfl.win_two_way("away") == pytest.approx(1.0)
+    assert nfl.handicap("home", -2.5) > nfl.handicap("home", -3.5)
+    rugby = PointsMatch("rugby", 25, 25)
+    assert 0.01 < rugby.draw() < 0.06
+    assert rugby.home_win() == pytest.approx(rugby.away_win())
+
+
+def test_points_and_baseball_entries():
+    from edge.multisport_day import baseball_entries, points_entries
+    nfl_bets = {"Over/Under": _v([("Over 44.5", 1.91), ("Under 44.5", 1.91)]),
+                "Asian Handicap": _v([("Home -3.5", 1.91), ("Away -3.5", 1.91)])}
+    entries, inputs = points_entries("nfl", nfl_bets)
+    assert inputs["total"] == pytest.approx(44.5) and inputs["margin"] == pytest.approx(3.5)
+    assert all(0 < p < 1 for _, _, p in entries)
+    mlb = {"Home/Away": _v([("Home", 1.70), ("Away", 2.20)]),
+           "Over/Under": _v([("Over 8.5", 1.91), ("Under 8.5", 1.91)])}
+    entries, inputs = baseball_entries(mlb)
+    e = {n: p for n, _, p in entries}
+    assert e["Home win"] + e["Away win"] == pytest.approx(1.0)
+    assert e["Home win"] > 0.5

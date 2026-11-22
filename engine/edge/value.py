@@ -17,6 +17,12 @@ RULES: dict[tuple[str, str], tuple[float, float, float]] = {
     ("football", "props"): (1.60, 2.20, 0.06),   # corners, cards, fouls, shots
     ("basketball", "main"): (1.35, 2.10, 0.04),  # team totals, halves, quarters, margin
     ("handball", "main"): (1.60, 2.20, 0.07),
+    # Added sports: NFL, MLB and NHL prices are among the sharpest anywhere,
+    # and SportyBet's margins here are not yet measured, so buffers are wide.
+    ("hockey", "main"): (1.35, 2.20, 0.05),
+    ("nfl", "main"): (1.40, 2.10, 0.05),
+    ("rugby", "main"): (1.40, 2.20, 0.06),
+    ("baseball", "main"): (1.40, 2.20, 0.05),
 }
 
 # Extra edge required where data is thinner.

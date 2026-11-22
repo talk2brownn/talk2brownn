@@ -99,15 +99,32 @@ def implied_margin(values: list[dict], sd: float) -> float | None:
     return statistics.median(means) if means else None
 
 
-def bookmaker_bets(odds_response: list[dict], prefer: str = "Pinnacle") -> tuple[str, dict[str, list]] | None:
-    """The preferred bookmaker's bets as {bet name: values}, else the first."""
+# Sharpest first. API-Sports spells Pinnacle "Pncl" in some sports.
+BOOK_PRIORITY = ("pinnacle", "pncl", "betfair", "bet365", "sbo", "williamhill", "marathon", "marathon bet")
+
+
+def bookmaker_bets(odds_response: list[dict]) -> tuple[str, dict[str, list]] | None:
+    """Every bet type, each taken from the sharpest bookmaker that offers it.
+
+    Returns (label, {bet name: values}); the label names the main source,
+    e.g. "Pinnacle" or "Pinnacle+Bet365" when some lines came from elsewhere.
+    """
     if not odds_response:
         return None
     books = odds_response[0].get("bookmakers") or []
     if not books:
         return None
-    book = next((b for b in books if b["name"] == prefer), books[0])
-    return book["name"], {bet["name"]: bet["values"] for bet in book["bets"]}
+    rank = {name: i for i, name in enumerate(BOOK_PRIORITY)}
+    books = sorted(books, key=lambda b: rank.get(b["name"].lower(), len(rank)))
+    bets: dict[str, list] = {}
+    used: list[str] = []
+    for book in books:
+        for bet in book["bets"]:
+            if bet["name"] not in bets and bet.get("values"):
+                bets[bet["name"]] = bet["values"]
+                if book["name"] not in used:
+                    used.append(book["name"])
+    return "+".join(used[:2]) if used else books[0]["name"], bets
 
 
 def half_line(x: float) -> float:
@@ -118,7 +135,7 @@ def half_line(x: float) -> float:
 def odds_rows(sport: str, game: dict, book: str, bets: dict[str, list]) -> list[tuple]:
     """Flatten one bookmaker's lines for the odds logger:
     (source, sport, match_id, kickoff, market, price)."""
-    prefix = {"basketball": "bb", "handball": "hb", "football": "fb"}[sport]
+    prefix = {"basketball": "bb", "handball": "hb", "football": "fb"}.get(sport, sport)
     rows = []
     for bet, values in bets.items():
         for v in values:
