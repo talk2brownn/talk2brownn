@@ -89,15 +89,30 @@ def price_match(m: FootballMatch, tier: str, n_sims: int = 20_000, seed: int = 0
 
 
 def market_xg(row: MatchRow) -> tuple[float, float] | None:
-    """Expected goals implied by exchange prices, else the bookmaker average."""
+    """Expected goals implied by exchange prices, else the bookmaker average.
+
+    Exchange quotes on thin markets are sometimes stray (e.g. Over 2.5 at
+    1.01), so a price set is used only if its margins are plausible and the
+    resulting expected goals are within football's normal range.
+    """
     for prefix, over, under in (("BFE", "BFE>2.5", "BFE<2.5"), ("Avg", "Avg>2.5", "Avg<2.5")):
         x = [row.num(prefix + k) for k in "HDA"]
         o, u = row.num(over), row.num(under)
-        if all(v and v > 1 for v in x) and o and u and o > 1 and u > 1:
-            ph, _, pa = fair_probabilities(x, "power")
-            po = fair_probabilities([o, u], "power")[0]
-            return xg_from_market(ph, pa, po)
+        if not (all(v and v > 1 for v in x) and o and u and o > 1 and u > 1):
+            continue
+        if not (_plausible_margin(x) and _plausible_margin([o, u])):
+            continue
+        ph, _, pa = fair_probabilities(x, "power")
+        po = fair_probabilities([o, u], "power")[0]
+        xg = xg_from_market(ph, pa, po)
+        if all(0.15 <= g <= 4.5 for g in xg):
+            return xg
     return None
+
+
+def _plausible_margin(odds: list[float]) -> bool:
+    m = sum(1 / o for o in odds) - 1
+    return -0.03 <= m <= 0.15
 
 
 def run(today: date | None = None, divisions: set[str] | None = None,
