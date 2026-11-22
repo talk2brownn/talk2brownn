@@ -26,20 +26,22 @@ python -m edge.export         # write web/public/data/<today>/
 
 ## Going live (one-time setup)
 
-1. **GitHub secret.** Repository Settings → Secrets and variables → Actions →
-   New repository secret: name `APISPORTS_KEY`, value = your API-Sports key.
-   The daily workflow (`.github/workflows/daily-prices.yml`) uses it.
+The site lives on Cloudflare Pages in the project `edge-picks`
+(https://edge-picks-9le.pages.dev). GitHub Actions builds and deploys it.
+
+1. **GitHub secrets.** Repository Settings → Secrets and variables → Actions →
+   New repository secret:
+   - `APISPORTS_KEY`: your API-Sports key.
+   - `CLOUDFLARE_API_TOKEN`: a Cloudflare API token with
+     *Account → Cloudflare Pages → Edit*.
 2. **Default branch.** GitHub runs scheduled workflows only from the default
    branch, so the daily job starts once this work is merged there.
-3. **Cloudflare Pages.** In the Cloudflare dashboard: Workers & Pages →
-   Create → Pages → Connect to Git → choose this repository, then set:
-   - Production branch: your default branch
-   - Root directory: `web`
-   - Build command: `npm ci && npm test && npm run build`
-   - Build output directory: `dist`
+3. **First run.** Actions → *Daily prices* → *Run workflow*. It prices today's
+   games, commits the data and deploys the site. After that it runs every
+   morning at 06:17 Lagos time.
 
-   Node 22 is picked up from `web/.node-version`. Each daily data commit
-   triggers a fresh deploy, and the site gets a free `*.pages.dev` address.
+Changes to `web/` pushed to `main` deploy through *Deploy site*
+(`.github/workflows/deploy-site.yml`), which can also be run by hand.
 
 ## Pages
 
