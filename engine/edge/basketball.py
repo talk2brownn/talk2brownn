@@ -30,13 +30,19 @@ class BasketballMatch:
     total_sd: dict[str, float] = field(default_factory=lambda: dict(TOTAL_SD))
     team_sd: dict[str, float] = field(default_factory=lambda: dict(TEAM_SD))
     margin_sd: float = MARGIN_SD
+    # Per-game period shares (e.g. read off a bookmaker's 1st-half line);
+    # falls back to the league-wide PERIOD_SHARE.
+    shares: dict[str, float] = field(default_factory=dict)
+
+    def share(self, period: str) -> float:
+        return self.shares.get(period, PERIOD_SHARE[period])
 
     def expected_total(self, period: str = "game") -> float:
-        return (self.home_points + self.away_points) * PERIOD_SHARE[period]
+        return (self.home_points + self.away_points) * self.share(period)
 
     def expected_team(self, side: str, period: str = "game") -> float:
         pts = self.home_points if side == "home" else self.away_points
-        return pts * PERIOD_SHARE[period]
+        return pts * self.share(period)
 
     def total_over(self, line: float, period: str = "game") -> float:
         return _over(line, self.expected_total(period), self.total_sd[period])

@@ -161,3 +161,27 @@ def test_catalogue_complements_and_blend():
     assert all(x.min_odds > x.fair_odds for x in priced)
     assert blend((1.0, 1.0), (4.0, 1.0), 0.5) == pytest.approx((2.0, 1.0))
     assert blend(None, (1.2, 0.9), 0.8) == (1.2, 0.9)
+
+
+def test_reading_bookmaker_lines():
+    from edge.sheet import implied_margin, implied_total
+    # A fair 50/50 total at 213.5 implies an expected total of 213.5.
+    vals = [{"value": "Over 213.5", "odd": "1.95"}, {"value": "Under 213.5", "odd": "1.95"},
+            {"value": "Over 214", "odd": "1.90"}, {"value": "Under 214", "odd": "2.00"}]
+    assert implied_total(vals, 18) == pytest.approx(213.5)
+    # Home -4.5 at even money: home expected to win by 4.5.
+    hc = [{"value": "Home -4.5", "odd": "1.91"}, {"value": "Away -4.5", "odd": "1.91"}]
+    assert implied_margin(hc, 12) == pytest.approx(4.5)
+    # Home favoured to cover -4.5 -> expected margin above 4.5.
+    hc2 = [{"value": "Home -4.5", "odd": "1.60"}, {"value": "Away -4.5", "odd": "2.40"}]
+    assert implied_margin(hc2, 12) > 4.5
+
+
+def test_basketball_and_handball_catalogues():
+    from edge.basketball_day import catalogue as bb_cat
+    from edge.handball_day import catalogue as hb_cat
+    bb = {n: p for n, _, p in bb_cat(BasketballMatch(112, 106))}
+    assert bb["Home win"] + bb["Away win"] == pytest.approx(1.0)
+    assert all(0 < p < 1 for p in bb.values())
+    hb = {n: p for n, _, p in hb_cat(30, 27)}
+    assert hb["Home win"] + hb["Draw"] + hb["Away win"] == pytest.approx(1.0)

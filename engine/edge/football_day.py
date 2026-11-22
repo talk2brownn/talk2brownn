@@ -15,45 +15,15 @@ from __future__ import annotations
 
 import math
 import zlib
-from dataclasses import asdict, dataclass, field
 from datetime import date
 
 from .data.footballdata import DIVISIONS, MatchRow, load_fixtures, load_history
 from .football import (FootballMatch, PathStats, Result, fit_dixon_coles,
                        simulate_paths, xg_from_market)
 from .odds import fair_probabilities
-from .value import ABSOLUTE_MIN_ODDS, RULES, TIER_BUFFER
+from .sheet import PricedGame, PricedMarket, price_list
 
 MARKET_WEIGHT = {"A": 0.8, "B": 0.7, "C": 0.6}
-
-
-@dataclass
-class PricedMarket:
-    market: str
-    category: str
-    probability: float
-    fair_odds: float
-    min_odds: float          # bet only if SportyBet offers at least this
-    in_band: bool            # min_odds falls inside the value-rule odds band
-
-
-@dataclass
-class PricedMatch:
-    match_id: str
-    division: str
-    league: str
-    tier: str
-    kickoff: str
-    home: str
-    away: str
-    xg_model: tuple[float, float] | None
-    xg_market: tuple[float, float] | None
-    xg: tuple[float, float]
-    markets: list[PricedMarket] = field(default_factory=list)
-
-    @property
-    def label(self) -> str:
-        return f"{self.home} vs {self.away}"
 
 
 def market_catalogue(m: FootballMatch, p: PathStats) -> list[tuple[str, str, float]]:
@@ -115,15 +85,7 @@ def market_catalogue(m: FootballMatch, p: PathStats) -> list[tuple[str, str, flo
 
 def price_match(m: FootballMatch, tier: str, n_sims: int = 20_000, seed: int = 0) -> list[PricedMarket]:
     paths = simulate_paths(m.home_xg, m.away_xg, n_sims=n_sims, seed=seed)
-    priced = []
-    for name, category, prob in market_catalogue(m, paths):
-        prob = min(max(prob, 1e-6), 1 - 1e-6)
-        lo, hi, edge = RULES[("football", category)]
-        need = edge + TIER_BUFFER.get(tier, 0.03)
-        min_odds = (1 + need) / prob
-        in_band = max(lo, ABSOLUTE_MIN_ODDS) <= min_odds <= hi
-        priced.append(PricedMarket(name, category, prob, 1 / prob, min_odds, in_band))
-    return priced
+    return price_list("football", tier, market_catalogue(m, paths))
 
 
 def market_xg(row: MatchRow) -> tuple[float, float] | None:
@@ -139,7 +101,7 @@ def market_xg(row: MatchRow) -> tuple[float, float] | None:
 
 
 def run(today: date | None = None, divisions: set[str] | None = None,
-        n_sims: int = 20_000) -> list[PricedMatch]:
+        n_sims: int = 20_000) -> list[PricedGame]:
     today = today or date.today()
     fixtures = [f for f in load_fixtures() if f.date >= today
                 and (divisions is None or f.div in divisions)]
@@ -162,8 +124,11 @@ def run(today: date | None = None, divisions: set[str] | None = None,
             continue
         rho = model.rho if model else -0.05
         fm = FootballMatch(xg[0], xg[1], rho)
-        pm = PricedMatch(f.match_id, f.div, league, tier, f"{f.date.isoformat()} {f.time}",
-                         f.home, f.away, xg_model, xg_mkt, xg)
+        inputs = {"division": f.div, "xg": [round(x, 2) for x in xg],
+                  "xg_model": [round(x, 2) for x in xg_model] if xg_model else None,
+                  "xg_market": [round(x, 2) for x in xg_mkt] if xg_mkt else None}
+        pm = PricedGame("football", f.match_id, league, tier, f"{f.date.isoformat()} {f.time}",
+                        f.home, f.away, inputs)
         pm.markets = price_match(fm, tier, n_sims, seed=zlib.crc32(f.match_id.encode()))
         out.append(pm)
     return out
@@ -178,9 +143,3 @@ def blend(model: tuple[float, float] | None, market: tuple[float, float] | None,
         return model
     return tuple(math.exp(w_market * math.log(mk) + (1 - w_market) * math.log(md))
                  for md, mk in zip(model, market))  # type: ignore[return-value]
-
-
-def to_dict(pm: PricedMatch) -> dict:
-    d = asdict(pm)
-    d["label"] = pm.label
-    return d
