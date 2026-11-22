@@ -1,5 +1,0 @@
-# Netlify: builds the website from web/ on every push.
-[build]
-  base = "web"
-  command = "npm ci && npm test && npm run build"
-  publish = "dist"

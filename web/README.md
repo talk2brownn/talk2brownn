@@ -31,9 +31,15 @@ python -m edge.export         # write web/public/data/<today>/
    The daily workflow (`.github/workflows/daily-prices.yml`) uses it.
 2. **Default branch.** GitHub runs scheduled workflows only from the default
    branch, so the daily job starts once this work is merged there.
-3. **Netlify.** Add new site → Import from GitHub → this repository. The
-   settings come from `netlify.toml` (base `web`, publish `dist`). Each daily
-   data commit triggers a fresh deploy.
+3. **Cloudflare Pages.** In the Cloudflare dashboard: Workers & Pages →
+   Create → Pages → Connect to Git → choose this repository, then set:
+   - Production branch: your default branch
+   - Root directory: `web`
+   - Build command: `npm ci && npm test && npm run build`
+   - Build output directory: `dist`
+
+   Node 22 is picked up from `web/.node-version`. Each daily data commit
+   triggers a fresh deploy, and the site gets a free `*.pages.dev` address.
 
 ## Pages
 
